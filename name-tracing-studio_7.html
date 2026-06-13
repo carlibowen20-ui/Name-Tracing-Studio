@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name Tracing Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2b2b3a;
+    --paper: #fbf6f3;
+    --card: #ffffff;
+    --line: #ece2dd;
+    --accent: #f0879f;
+    --accent-soft: #fde9ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+  }
+
+  /* ---------- App chrome ---------- */
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 26px;
+  }
+  .brand-name {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    line-height: 1.1;
+    min-height: 50px;
+    word-break: break-word;
+  }
+  .brand-sub {
+    font-style: italic;
+    font-size: 17px;
+    color: #6f6a78;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 26px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Controls ---------- */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px;
+    position: sticky;
+    top: 18px;
+  }
+  @media (max-width: 860px) {
+    .panel { position: static; }
+  }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: #8a8494;
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 11px 13px;
+    font: 500 16px 'Poppins', sans-serif;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+    border-radius: 11px;
+    background: #fffdfc;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .hint { font-size: 12.5px; color: #a09aa8; margin-top: 4px; }
+
+  .swatch-row { display: flex; gap: 10px; }
+  .swatch {
+    --c1: #f599b0; --c2: #fed4de; --c3: #fee195; --c4: #ade4de;
+    width: 54px; height: 34px;
+    border-radius: 9px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    background:
+      linear-gradient(90deg, var(--c1) 0 25%, var(--c2) 25% 50%, var(--c3) 50% 75%, var(--c4) 75% 100%);
+  }
+  .swatch.sel { border-color: var(--ink); }
+  .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .seg { display: flex; gap: 6px; }
+  .seg button {
+    flex: 1;
+    padding: 8px 0;
+    font: 600 14px 'Poppins', sans-serif;
+    color: var(--ink);
+    background: #fffdfc;
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .seg button.sel {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  .print-btn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 14px 0;
+    font: 700 16px 'Poppins', sans-serif;
+    letter-spacing: .3px;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .08s, background .15s;
+  }
+  .print-btn:hover { background: #e9758f; }
+  .print-btn:active { transform: scale(.985); }
+  .print-note {
+    font-size: 12.5px;
+    color: #a09aa8;
+    text-align: center;
+    margin-top: 9px;
+  }
+
+  /* ---------- Preview sheets ---------- */
+  .sheets { display: flex; flex-direction: column; gap: 26px; }
+  .sheet {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(43,43,58,.10), 0 10px 28px rgba(43,43,58,.10);
+    overflow: hidden;
+  }
+  .sheet svg { display: block; width: 100%; height: auto; }
+  .empty-state {
+    border: 2px dashed var(--line);
+    border-radius: 18px;
+    padding: 70px 30px;
+    text-align: center;
+    color: #a09aa8;
+    font-size: 16px;
+  }
+  .empty-state b { color: var(--ink); }
+
+  /* ---------- Print ---------- */
+  @media print {
+    @page { size: 8.5in 11in; margin: 0; }
+    body { background: #fff; }
+    .app { max-width: none; padding: 0; }
+    .brand, .panel { display: none !important; }
+    .layout { display: block; }
+    .sheets { gap: 0; }
+    .sheet {
+      box-shadow: none;
+      border-radius: 0;
+      width: 8.5in;
+      height: 11in;
+      page-break-after: always;
+    }
+    .sheet:last-child { page-break-after: avoid; }
+    .sheet svg { width: 8.5in; height: 11in; }
+    .empty-state { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand">
+    <div class="brand-name" id="brandName" aria-live="polite"></div>
+    <div class="brand-sub">Name Tracing Studio &mdash; type a name, print the worksheet packet</div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="field">
+        <label for="first">First name</label>
+        <input id="first" type="text" value="Willa" maxlength="14" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="middle">Middle name <span style="text-transform:none;font-weight:400">(optional)</span></label>
+        <input id="middle" type="text" value="" maxlength="14" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="last">Last name <span style="text-transform:none;font-weight:400">(optional)</span></label>
+        <input id="last" type="text" value="" maxlength="14" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label>Color theme</label>
+        <div class="swatch-row" id="swatches" role="radiogroup" aria-label="Color theme"></div>
+      </div>
+
+      <div class="field">
+        <label>Letter style</label>
+        <div class="seg" id="styleSeg">
+          <button data-style="dash" class="sel">Dashes</button>
+          <button data-style="dot">Dots</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Practice lines per page</label>
+        <div class="seg" id="lineSeg"></div>
+      </div>
+
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; text-transform:none; font-size:14px; font-weight:500; color:var(--ink);">
+          <input type="checkbox" id="alphaToggle" style="width:16px; height:16px; accent-color:var(--accent);">
+          Add alphabet practice pages
+        </label>
+      </div>
+
+      <button class="print-btn" id="printBtn">Print worksheets</button>
+      <div class="print-note">In the print dialog, choose &ldquo;Save as PDF&rdquo; to keep a copy.</div>
+      <div class="hint" id="charWarn" style="color:#d4708a; display:none; margin-top:10px;"></div>
+    </div>
+
+    <div class="sheets" id="sheets"></div>
+  </div>
+</div>
+
+<script>
+// ============ Precomputed certified dot font ============
+// Dots are precomputed with a junction-aware engine that guarantees a
+// minimum separation between every pair of dots in every glyph.
+const GLYPH_DOTS={"A":[500,[[0.0,0.0],[28.6,80.0],[55.9,156.6],[83.3,233.2],[110.6,309.7],[138.0,386.3],[165.3,462.9],[192.7,539.4],[220.0,616.0],[250.0,700.0],[280.0,616.0],[307.3,539.4],[334.7,462.9],[362.0,386.3],[389.4,309.7],[416.7,233.2],[444.1,156.6],[471.4,80.0],[500.0,0.0],[180.0,260.0],[250.0,260.0],[320.0,260.0]]],"B":[350,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[82.5,700.0],[165.0,700.0],[165.0,344.0],[82.5,344.0],[165.0,0.0],[82.5,0.0],[247.2,681.4],[309.9,632.7],[345.3,561.7],[345.3,482.3],[309.9,411.3],[247.2,362.6],[309.5,279.4],[345.3,210.7],[345.3,133.3],[309.5,64.6],[247.4,18.0]]],"C":[505,[[443.4,584.2],[389.3,649.4],[315.1,692.3],[229.7,696.2],[152.5,659.2],[94.2,595.9],[54.9,519.2],[32.4,436.0],[25.0,350.0],[32.4,264.0],[54.9,180.8],[94.2,104.1],[152.5,40.8],[229.7,3.8],[315.1,7.7],[389.3,50.6],[443.4,115.8]]],"D":[430,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[75.0,700.0],[150.0,700.0],[150.0,0.0],[75.0,0.0],[233.0,684.2],[303.6,642.6],[359.3,582.5],[398.8,510.5],[422.2,431.8],[430.0,350.0],[422.2,268.2],[398.8,189.5],[359.3,117.5],[303.6,57.4],[233.0,15.8]]],"E":[430,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[85.0,700.0],[171.7,700.0],[258.3,700.0],[345.0,700.0],[430.0,700.0],[85.0,350.0],[160.0,350.0],[235.0,350.0],[320.0,350.0],[85.0,0.0],[171.7,0.0],[258.3,0.0],[345.0,0.0],[430.0,0.0]]],"F":[430,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[85.0,700.0],[171.7,700.0],[258.3,700.0],[345.0,700.0],[430.0,700.0],[85.0,350.0],[160.0,350.0],[235.0,350.0],[320.0,350.0]]],"G":[510,[[505.0,300.0],[400.0,300.0],[295.0,300.0],[443.4,584.2],[389.3,649.4],[315.1,692.3],[229.7,696.2],[152.5,659.2],[94.2,595.9],[54.9,519.2],[32.4,436.0],[25.0,350.0],[32.4,264.0],[54.9,180.8],[94.2,104.1],[152.5,40.8],[229.7,3.8],[315.1,7.7],[389.3,50.6],[443.4,115.8]]],"H":[500,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[500.0,0.0],[500.0,85.0],[500.0,173.3],[500.0,261.7],[500.0,350.0],[500.0,438.3],[500.0,526.7],[500.0,615.0],[500.0,700.0],[85.0,350.0],[167.5,350.0],[250.0,350.0],[332.5,350.0],[415.0,350.0]]],"I":[280,[[140.0,0.0],[140.0,85.0],[140.0,173.3],[140.0,261.7],[140.0,350.0],[140.0,438.3],[140.0,526.7],[140.0,615.0],[140.0,700.0],[0.0,700.0],[280.0,700.0],[0.0,0.0],[280.0,0.0]]],"J":[330,[[330.0,700.0],[330.0,615.0],[330.0,523.8],[330.0,432.5],[330.0,341.2],[330.0,250.0],[330.0,165.0],[308.6,83.7],[248.1,22.5],[165.0,0.0],[81.9,22.5],[21.4,83.7],[0.0,165.0]]],"K":[460,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[460.0,700.0],[398.4,641.4],[331.0,577.4],[263.7,513.3],[196.3,449.2],[129.0,385.1],[61.6,321.1],[73.8,220.4],[151.9,175.8],[230.0,131.2],[308.1,86.7],[386.2,42.1],[460.0,0.0]]],"L":[410,[[0.0,700.0],[0.0,615.0],[0.0,526.7],[0.0,438.3],[0.0,350.0],[0.0,261.7],[0.0,173.3],[0.0,85.0],[0.0,0.0],[85.0,0.0],[165.0,0.0],[245.0,0.0],[325.0,0.0],[410.0,0.0]]],"M":[600,[[0.0,0.0],[0.0,85.0],[0.0,167.9],[0.0,250.7],[0.0,333.6],[0.0,416.5],[0.0,499.3],[0.0,582.2],[0.0,700.0],[98.0,526.8],[138.1,456.1],[178.1,385.4],[218.1,314.7],[258.1,244.0],[300.0,170.0],[341.9,244.0],[381.9,314.7],[421.9,385.4],[461.9,456.1],[502.0,526.8],[542.0,597.5],[600.0,700.0],[600.0,582.2],[600.0,499.3],[600.0,416.5],[600.0,333.6],[600.0,250.7],[600.0,167.9],[600.0,85.0],[600.0,0.0]]],"N":[500,[[0.0,0.0],[0.0,85.0],[0.0,171.1],[0.0,257.2],[0.0,343.3],[0.0,429.5],[0.0,515.6],[0.0,601.7],[0.0,700.0],[105.4,552.5],[153.6,485.0],[201.8,417.5],[250.0,350.0],[298.2,282.5],[346.4,215.0],[394.6,147.5],[442.9,80.0],[500.0,0.0],[500.0,98.3],[500.0,184.4],[500.0,270.5],[500.0,356.7],[500.0,442.8],[500.0,528.9],[500.0,615.0],[500.0,700.0]]],"O":[530,[[530.0,350.0],[522.3,433.9],[498.8,514.8],[458.6,588.9],[401.1,650.3],[327.3,690.2],[243.9,698.9],[164.0,673.6],[97.9,621.6],[49.2,553.0],[17.5,475.0],[1.9,392.1],[1.9,307.9],[17.5,225.0],[49.2,147.0],[97.9,78.4],[164.0,26.4],[243.9,1.1],[327.3,9.8],[401.1,49.7],[458.6,111.1],[498.8,185.2],[522.3,266.1]]],"P":[370,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[85.0,700.0],[170.0,700.0],[170.0,330.0],[85.0,330.0],[252.8,683.4],[323.4,633.7],[364.5,558.0],[364.5,472.0],[323.4,396.3],[252.8,346.6]]],"Q":[530,[[330.0,160.0],[390.1,99.9],[469.9,20.1],[530.0,-40.0],[530.0,350.0],[522.3,433.9],[498.8,514.8],[458.6,588.9],[401.1,650.3],[327.3,690.2],[243.9,698.9],[164.0,673.6],[97.9,621.6],[49.2,553.0],[17.5,475.0],[1.9,392.1],[1.9,307.9],[17.5,225.0],[49.2,147.0],[97.9,78.4],[164.0,26.4],[243.9,1.1],[327.3,9.8],[458.6,111.1],[498.8,185.2],[522.3,266.1]]],"R":[460,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[85.0,700.0],[170.0,700.0],[170.0,330.0],[85.0,330.0],[226.1,266.2],[285.4,198.7],[344.6,131.3],[403.9,63.8],[460.0,0.0],[252.8,683.4],[323.4,633.7],[364.5,558.0],[364.5,472.0],[323.4,396.3],[252.8,346.6]]],"S":[400,[[358.4,625.4],[294.9,680.7],[206.7,699.8],[120.7,672.4],[59.8,605.8],[40.2,517.7],[67.0,431.5],[133.3,370.2],[215.0,350.0],[296.7,329.8],[363.0,268.5],[389.8,182.3],[370.2,94.2],[309.3,27.6],[223.3,0.2],[135.1,19.3],[71.6,74.6]]],"T":[460,[[230.0,0.0],[230.0,85.0],[230.0,173.3],[230.0,261.7],[230.0,350.0],[230.0,438.3],[230.0,526.7],[230.0,615.0],[230.0,700.0],[0.0,700.0],[85.0,700.0],[375.0,700.0],[460.0,700.0]]],"U":[500,[[0.0,700.0],[0.0,615.0],[0.0,521.7],[0.0,428.3],[0.0,335.0],[0.0,250.0],[500.0,250.0],[500.0,335.0],[500.0,428.3],[500.0,521.7],[500.0,615.0],[500.0,700.0],[14.3,166.6],[57.5,90.5],[124.2,34.0],[206.3,3.9],[293.7,3.9],[375.8,34.0],[442.5,90.5],[485.7,166.6]]],"V":[520,[[0.0,700.0],[29.6,620.3],[58.2,543.2],[86.9,466.2],[115.5,389.1],[144.1,312.0],[172.7,234.9],[201.4,157.8],[230.0,80.8],[260.0,0.0],[290.0,80.8],[318.6,157.8],[347.3,234.9],[375.9,312.0],[404.5,389.1],[433.1,466.2],[461.8,543.2],[490.4,620.3],[520.0,700.0]]],"W":[700,[[0.0,700.0],[20.6,617.5],[42.0,531.9],[63.4,446.2],[84.9,360.6],[106.3,274.9],[127.7,189.2],[149.1,103.6],[175.0,0.0],[209.1,101.2],[236.8,183.6],[264.5,266.0],[292.3,348.4],[320.0,430.9],[350.0,520.0],[380.0,430.9],[407.7,348.4],[435.5,266.0],[463.2,183.6],[490.9,101.2],[525.0,0.0],[572.3,189.2],[593.7,274.9],[615.1,360.6],[636.6,446.2],[658.0,531.9],[679.4,617.5],[700.0,700.0]]],"X":[480,[[0.0,700.0],[48.1,629.9],[96.1,559.9],[144.0,489.9],[192.0,420.0],[240.0,350.0],[288.0,280.0],[336.0,210.1],[383.9,140.1],[431.9,70.1],[480.0,0.0],[0.0,0.0],[48.1,70.1],[96.1,140.1],[144.0,210.1],[192.0,280.0],[288.0,420.0],[336.0,489.9],[383.9,559.9],[431.9,629.9],[480.0,700.0]]],"Y":[480,[[0.0,700.0],[46.3,628.7],[95.4,552.9],[144.6,477.1],[193.7,401.3],[240.0,330.0],[480.0,700.0],[433.7,628.7],[384.6,552.9],[335.4,477.1],[286.3,401.3],[240.0,245.0],[240.0,165.0],[240.0,85.0],[240.0,0.0]]],"Z":[460,[[0.0,700.0],[85.0,700.0],[181.7,700.0],[278.3,700.0],[375.0,700.0],[460.0,700.0],[413.3,629.0],[367.5,559.2],[321.7,489.5],[275.8,419.7],[230.0,350.0],[184.2,280.3],[138.3,210.5],[92.5,140.8],[46.7,71.0],[0.0,0.0],[85.0,0.0],[181.7,0.0],[278.3,0.0],[375.0,0.0],[460.0,0.0]]],"a":[470,[[470.0,470.0],[470.0,385.0],[470.0,310.0],[470.0,235.0],[470.0,160.0],[470.0,85.0],[470.0,0.0],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[35.2,358.7],[4.0,278.2],[4.0,191.8],[35.2,111.3],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7]]],"b":[470,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[470.0,235.0],[454.1,319.9],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7],[454.1,150.1]]],"c":[440,[[401.2,401.2],[331.6,449.2],[249.3,469.6],[165.2,459.4],[90.1,420.0],[33.9,356.6],[3.9,277.4],[3.9,192.6],[33.9,113.4],[90.1,50.0],[165.2,10.6],[249.3,0.4],[331.6,20.8],[401.2,68.8]]],"d":[470,[[470.0,0.0],[470.0,85.0],[470.0,173.3],[470.0,261.7],[470.0,350.0],[470.0,438.3],[470.0,526.7],[470.0,615.0],[470.0,700.0],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[35.2,358.7],[4.0,278.2],[4.0,191.8],[35.2,111.3],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7]]],"e":[470,[[0.0,235.0],[85.0,235.0],[160.0,235.0],[235.0,235.0],[310.0,235.0],[385.0,235.0],[470.0,235.0],[454.8,318.2],[411.7,389.9],[346.3,442.0],[266.7,467.8],[183.2,464.2],[106.2,431.5],[45.5,374.0],[8.8,298.8],[22.5,134.7],[71.1,66.6],[140.4,19.9],[221.8,0.4],[304.8,10.6],[379.7,49.8]]],"f":[330,[[130.0,0.0],[130.0,85.0],[130.0,163.0],[130.0,241.0],[130.0,319.0],[130.0,397.0],[130.0,475.0],[130.0,560.0],[0.0,470.0],[225.0,470.0],[310.0,470.0],[161.3,637.0],[236.6,685.8],[320.0,700.0]]],"g":[470,[[470.0,470.0],[470.0,385.0],[470.0,295.0],[470.0,205.0],[470.0,115.0],[470.0,25.0],[470.0,-60.0],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[35.2,358.7],[4.0,278.2],[4.0,191.8],[35.2,111.3],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7],[447.7,-141.0],[394.8,-196.8],[323.5,-226.3],[246.5,-226.3],[175.2,-196.8],[122.3,-141.0],[100.0,-60.0]]],"h":[470,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[470.0,313.3],[470.0,228.3],[470.0,156.7],[470.0,85.0],[470.0,0.0],[103.3,443.1],[190.0,467.1],[280.0,467.1],[366.7,443.1],[439.4,390.7]]],"i":[0,[[0.0,0.0],[0.0,85.0],[0.0,160.0],[0.0,235.0],[0.0,310.0],[0.0,385.0],[0.0,470.0],[0,595]]],"j":[140,[[140.0,470.0],[140.0,385.0],[140.0,295.0],[140.0,205.0],[140.0,115.0],[140.0,25.0],[140.0,-60.0],[122.4,-142.5],[78.1,-201.1],[0.0,-230.0],[140,595]]],"k":[320,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0],[320.0,470.0],[248.7,423.8],[160.0,366.2],[71.3,308.7],[65.7,208.6],[128.6,157.0],[191.4,105.5],[254.3,53.9],[320.0,0.0]]],"l":[0,[[0.0,0.0],[0.0,85.0],[0.0,173.3],[0.0,261.7],[0.0,350.0],[0.0,438.3],[0.0,526.7],[0.0,615.0],[0.0,700.0]]],"m":[560,[[0.0,0.0],[0.0,85.0],[0.0,160.0],[0.0,235.0],[0.0,310.0],[0.0,385.0],[0.0,470.0],[280.0,313.3],[280.0,228.3],[280.0,156.7],[280.0,85.0],[280.0,0.0],[560.0,313.3],[560.0,228.3],[560.0,156.7],[560.0,85.0],[560.0,0.0],[91.8,460.4],[188.2,460.4],[259.5,394.9],[371.8,460.4],[468.2,460.4],[539.5,394.9]]],"n":[470,[[0.0,0.0],[0.0,85.0],[0.0,160.0],[0.0,235.0],[0.0,310.0],[0.0,385.0],[0.0,470.0],[470.0,313.3],[470.0,228.3],[470.0,156.7],[470.0,85.0],[470.0,0.0],[103.3,443.1],[190.0,467.1],[280.0,467.1],[366.7,443.1],[439.4,390.7]]],"o":[470,[[470.0,235.0],[454.1,319.9],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[35.2,358.7],[4.0,278.2],[4.0,191.8],[35.2,111.3],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7],[454.1,150.1]]],"p":[470,[[0.0,470.0],[0.0,385.0],[0.0,296.7],[0.0,208.3],[0.0,120.0],[0.0,31.7],[0.0,-56.7],[0.0,-145.0],[0.0,-230.0],[470.0,235.0],[454.1,319.9],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7],[454.1,150.1]]],"q":[470,[[470.0,470.0],[470.0,385.0],[470.0,296.7],[470.0,208.3],[470.0,120.0],[470.0,31.7],[470.0,-56.7],[470.0,-145.0],[470.0,-230.0],[408.7,393.3],[339.7,445.4],[256.7,469.0],[170.7,461.0],[93.4,422.5],[35.2,358.7],[4.0,278.2],[4.0,191.8],[35.2,111.3],[93.4,47.5],[170.7,9.0],[256.7,1.0],[339.7,24.6],[408.7,76.7]]],"r":[310,[[0.0,0.0],[0.0,85.0],[0.0,160.0],[0.0,235.0],[0.0,310.0],[0.0,385.0],[0.0,470.0],[68.4,426.0],[140.1,463.3],[220.9,467.5],[299.0,435.6]]],"s":[270,[[246.3,419.9],[177.5,466.7],[101.3,459.4],[45.8,406.8],[34.5,331.0],[72.2,264.4],[150.0,235.0],[227.8,205.6],[265.5,139.0],[254.2,63.2],[198.7,10.6],[122.5,3.3],[53.7,50.1]]],"t":[310,[[130.0,640.0],[130.0,555.0],[130.0,465.0],[130.0,375.0],[130.0,285.0],[130.0,195.0],[130.0,110.0],[0.0,470.0],[215.0,470.0],[300.0,470.0],[182.2,26.6],[280.0,0.0]]],"u":[470,[[0.0,470.0],[0.0,385.0],[0.0,313.4],[0.0,241.7],[0.0,156.7],[470.0,470.0],[470.0,385.0],[470.0,310.0],[470.0,235.0],[470.0,160.0],[470.0,85.0],[470.0,0.0],[30.6,79.3],[103.3,26.9],[190.0,2.9],[280.0,2.9],[366.7,26.9]]],"v":[470,[[0.0,470.0],[38.0,394.0],[77.8,314.5],[117.5,235.0],[157.2,155.5],[197.0,76.0],[235.0,0.0],[273.0,76.0],[312.8,155.5],[352.5,235.0],[392.2,314.5],[432.0,394.0],[470.0,470.0]]],"w":[620,[[0.0,470.0],[26.6,389.3],[51.8,313.1],[76.9,236.9],[102.0,160.7],[127.1,84.4],[155.0,0.0],[217.8,162.2],[248.6,241.5],[279.3,320.7],[310.0,400.0],[340.7,320.7],[371.4,241.5],[402.2,162.2],[432.9,82.9],[465.0,0.0],[492.9,84.4],[518.0,160.7],[543.1,236.9],[568.2,313.1],[593.4,389.3],[620.0,470.0]]],"x":[440,[[0.0,470.0],[58.1,407.9],[112.1,350.3],[166.0,292.6],[220.0,235.0],[274.0,177.4],[327.9,119.7],[381.9,62.1],[440.0,0.0],[0.0,0.0],[58.1,62.1],[112.1,119.7],[327.9,350.3],[381.9,407.9],[440.0,470.0]]],"y":[470,[[0.0,470.0],[41.4,395.8],[86.2,315.4],[131.0,235.0],[175.8,154.6],[220.6,74.2],[262.0,0.0],[470.0,470.0],[435.6,392.3],[401.1,314.5],[366.7,236.7],[332.2,158.9],[297.8,81.1],[228.9,-74.5],[194.4,-152.3],[160.0,-230.0]]],"z":[440,[[0.0,470.0],[85.0,470.0],[175.0,470.0],[265.0,470.0],[355.0,470.0],[440.0,470.0],[381.9,407.9],[327.9,350.3],[274.0,292.6],[220.0,235.0],[166.0,177.4],[112.1,119.7],[58.1,62.1],[0.0,0.0],[85.0,0.0],[175.0,0.0],[265.0,0.0],[355.0,0.0],[440.0,0.0]]],"-":[250,[[0.0,290.0],[85.0,290.0],[165.0,290.0],[250.0,290.0]]]};const STROKE_FONT={"A":[500,[["L",0,0,250,700.0],["L",250,700.0,500,0],["L",95,260,405,260]]],"B":[350,[["L",0,0,0,700.0],["L",0,700.0,165,700.0],["E",165,522,185,178,90,-90],["L",165,344,0,344],["E",165,172,185,172,90,-90],["L",165,0,0,0]]],"C":[505,[["E",265,350,240,350,42,318]]],"D":[430,[["L",0,0,0,700.0],["L",0,700.0,150,700.0],["E",150,350,280,350,90,-90],["L",150,0,0,0]]],"E":[430,[["L",0,0,0,700.0],["L",0,700.0,430,700.0],["L",0,350,320,350],["L",0,0,430,0]]],"F":[430,[["L",0,0,0,700.0],["L",0,700.0,430,700.0],["L",0,350,320,350]]],"G":[510,[["E",265,350,240,350,42,318],["L",505,300,295,300]]],"H":[500,[["L",0,0,0,700.0],["L",500,0,500,700.0],["L",0,350,500,350]]],"I":[280,[["L",140,0,140,700.0],["L",0,700.0,280,700.0],["L",0,0,280,0]]],"J":[330,[["L",330,700.0,330,165],["E",165,165,165,165,0,-180]]],"K":[460,[["L",0,0,0,700.0],["L",460,700.0,0,262.5],["L",0,262.5,460,0]]],"L":[410,[["L",0,700.0,0,0],["L",0,0,410,0]]],"M":[600,[["L",0,0,0,700.0],["L",0,700.0,300,170],["L",300,170,600,700.0],["L",600,700.0,600,0]]],"N":[500,[["L",0,0,0,700.0],["L",0,700.0,500,0],["L",500,0,500,700.0]]],"O":[530,[["E",265,350,265,350,0,360]]],"P":[370,[["L",0,0,0,700.0],["L",0,700.0,170,700.0],["E",170,515,200,185,90,-90],["L",170,330,0,330]]],"Q":[530,[["E",265,350,265,350,0,360],["L",330,160,530,-40]]],"R":[460,[["L",0,0,0,700.0],["L",0,700.0,170,700.0],["E",170,515,200,185,90,-90],["L",170,330,0,330],["L",170,330,460,0]]],"S":[400,[["E",215,525,175,175,35,270],["E",215,175,175,175,90,-145]]],"T":[460,[["L",230,0,230,700.0],["L",0,700.0,460,700.0]]],"U":[500,[["L",0,700.0,0,250],["E",250,250,250,250,180,360],["L",500,250,500,700.0]]],"V":[520,[["L",0,700.0,260,0],["L",260,0,520,700.0]]],"W":[700,[["L",0,700.0,175,0],["L",175,0,350,520],["L",350,520,525,0],["L",525,0,700,700.0]]],"X":[480,[["L",0,700.0,480,0],["L",0,0,480,700.0]]],"Y":[480,[["L",0,700.0,240,330],["L",480,700.0,240,330],["L",240,330,240,0]]],"Z":[460,[["L",0,700.0,460,700.0],["L",460,700.0,0,0],["L",0,0,460,0]]],"a":[470,[["E",235.0,235.0,235.0,235.0,0,360],["L",470,470.0,470,0]]],"b":[470,[["L",0,0,0,700.0],["E",235.0,235.0,235.0,235.0,0,360]]],"c":[440,[["E",235.0,235.0,235.0,235.0,45,315]]],"d":[470,[["L",470,0,470,700.0],["E",235.0,235.0,235.0,235.0,0,360]]],"e":[470,[["L",0,235.0,470,235.0],["E",235.0,235.0,235.0,235.0,0,308]]],"f":[330,[["L",130,0,130,560],["E",320,560,190,140,180,90],["L",0,470.0,310,470.0]]],"g":[470,[["E",235.0,235.0,235.0,235.0,0,360],["L",470,470.0,470,-60],["E",285,-60,185,170,0,-180]]],"h":[470,[["L",0,0,0,700.0],["L",470,313.3,470,0],["E",235,313.3,235,156.7,180,0]]],"i":[0,[["L",0,0,0,470.0],["P",0,595]]],"j":[140,[["L",140,470.0,140,-60],["E",0,-60,140,170,0,-90],["P",140,595]]],"k":[320,[["L",0,0,0,700.0],["L",320,470.0,0,262.5],["L",0,262.5,320,0]]],"l":[0,[["L",0,0,0,700.0]]],"m":[560,[["L",0,0,0,470.0],["L",280,313.3,280,0],["L",560,313.3,560,0],["E",140,313.3,140,156.7,180,0],["E",420,313.3,140,156.7,180,0]]],"n":[470,[["L",0,0,0,470.0],["L",470,313.3,470,0],["E",235,313.3,235,156.7,180,0]]],"o":[470,[["E",235.0,235.0,235.0,235.0,0,360]]],"p":[470,[["L",0,470.0,0,-230.0],["E",235.0,235.0,235.0,235.0,0,360]]],"q":[470,[["E",235.0,235.0,235.0,235.0,0,360],["L",470,470.0,470,-230.0]]],"r":[310,[["L",0,0,0,470.0],["E",190,280,190,190,180,55]]],"s":[270,[["E",150,352.5,117.5,117.5,35,270],["E",150,117.5,117.5,117.5,90,-145]]],"t":[310,[["L",130,640,130,110],["E",280,110,150,110,180,270],["L",0,470.0,300,470.0]]],"u":[470,[["L",0,470.0,0,156.7],["L",470,470.0,470,0],["E",235,156.7,235,156.7,180,360]]],"v":[470,[["L",0,470.0,235,0],["L",235,0,470,470.0]]],"w":[620,[["L",0,470.0,155,0],["L",155,0,310,400],["L",310,400,465,0],["L",465,0,620,470.0]]],"x":[440,[["L",0,470.0,440,0],["L",0,0,440,470.0]]],"y":[470,[["L",0,470.0,262,0],["L",470,470.0,160,-230]]],"z":[440,[["L",0,470.0,440,470.0],["L",440,470.0,0,0],["L",0,0,440,0]]],"-":[250,[["L",0,290,250,290]]]};const BEARINGS={"i":[55,55],"l":[55,55],"j":[35,20]};const SPACE_ADV=380,TRACK=150,DOT_R_EM=0.029;
+
+const UPM = 1000;
+const BASE = 0, XH = 470, ASC = 700;
+
+// ---- dashed rendering from stroke primitives ----
+const STROKE_W = 50, DASH = '112 74', TITTLE_R = 40;
+
+function arcD(cx, cy, rx, ry, a0, a1, n = 48) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
+    pts.push(`${(cx + rx * Math.cos(t)).toFixed(1)} ${(cy + ry * Math.sin(t)).toFixed(1)}`);
+  }
+  return 'M ' + pts.join(' L ');
+}
+
+function dashFragment(text, S, color = '#1c1c1c') {
+  const scale = S / UPM;
+  let x = 0;
+  let out = '';
+  let last = null;
+  for (const ch of text) {
+    if (ch === ' ') { x += (SPACE_ADV + TRACK) * scale; last = ch; continue; }
+    const g = STROKE_FONT[ch];
+    if (!g) continue;
+    const [adv, strokes] = g;
+    const [lsb, rsb] = BEARINGS[ch] || [0, 0];
+    x += lsb * scale;
+    const gx = x / scale;
+    let inner = '';
+    for (const s of strokes) {
+      if (s[0] === 'L') {
+        inner += `<path d="M ${s[1]} ${s[2]} L ${s[3]} ${s[4]}" fill="none" stroke="${color}" stroke-width="${STROKE_W}" stroke-dasharray="${DASH}" stroke-linecap="butt"/>`;
+      } else if (s[0] === 'E') {
+        inner += `<path d="${arcD(s[1], s[2], s[3], s[4], s[5], s[6])}" fill="none" stroke="${color}" stroke-width="${STROKE_W}" stroke-dasharray="${DASH}" stroke-linecap="butt"/>`;
+      } else if (s[0] === 'P') {
+        inner += `<circle cx="${s[1]}" cy="${s[2]}" r="${TITTLE_R}" fill="${color}"/>`;
+      }
+    }
+    out += `<g transform="scale(${scale.toFixed(5)},${(-scale).toFixed(5)}) translate(${gx.toFixed(1)},0)">${inner}</g>`;
+    x += (adv + rsb + TRACK) * scale;
+    last = ch;
+  }
+  if (last !== null && last !== ' ') x -= TRACK * scale;
+  return { frag: out, width: x };
+}
+
+function layoutText(text) {
+  let x = 0;
+  const all = [];
+  let last = null;
+  for (const ch of text) {
+    if (ch === ' ') { x += SPACE_ADV + TRACK; last = ch; continue; }
+    const g = GLYPH_DOTS[ch];
+    if (!g) continue;
+    const [adv, pts] = g;
+    const [lsb, rsb] = BEARINGS[ch] || [0, 0];
+    x += lsb;
+    for (const [gx, gy] of pts) all.push([x + gx, gy]);
+    x += adv + rsb + TRACK;
+    last = ch;
+  }
+  if (last !== null && last !== ' ') x -= TRACK;
+  return { pts: all, width: x };
+}
+
+// ============ Page rendering ============
+const PAGE_W = 816, PAGE_H = 1056, X_LEFT = 60, LINE_W = 696;
+
+const THEMES = [
+  { name: 'Pink',  c: ['#F599B0', '#FED4DE', '#FEE195', '#ADE4DE'] },
+  { name: 'Ocean', c: ['#82B4E8', '#CDE4F9', '#A8E3D0', '#FEE195'] },
+  { name: 'Sage',  c: ['#9CC5A1', '#D7E8DA', '#FEE195', '#F4C7AB'] },
+];
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function headerSvg(name, theme) {
+  const up = name.toUpperCase();
+  const size = Math.min(72, 560 / (up.length * 0.68));
+  let spans = '';
+  for (let i = 0; i < up.length; i++) {
+    const col = up[i] === ' ' ? '#000' : theme.c[i % 4];
+    spans += `<tspan fill="${col}">${esc(up[i])}</tspan>`;
+  }
+  return `<text x="${X_LEFT}" y="115" xml:space="preserve" font-family="Poppins, sans-serif" font-weight="700" font-size="${size.toFixed(1)}" letter-spacing="2">${spans}</text>`;
+}
+
+function subtitleSvg(text) {
+  return `<text x="${PAGE_W / 2}" y="180" text-anchor="middle" font-family="Poppins, sans-serif" font-style="italic" font-size="34" fill="#2b2b3a">${esc(text)}</text>`;
+}
+
+function pageSvg({ name, subtitle, lineTexts, S, theme }) {
+  const boxH = (ASC - BASE) / UPM * S;
+  const dashFromBottom = (XH - BASE) / UPM * S;
+  const dotR = DOT_R_EM * S;
+  const yStart = 230, yEnd = 1012;
+  const nLines = lineTexts.length;
+  const gap = (yEnd - yStart - nLines * boxH) / (nLines - 1);
+
+  let body = headerSvg(name, theme) + subtitleSvg(subtitle);
+  const dotCacheLocal = {};
+
+  let y = yStart;
+  for (let i = 0; i < nLines; i++) {
+    const bottom = y + boxH;
+    const dashY = bottom - dashFromBottom;
+    body += `<line x1="${X_LEFT}" y1="${y.toFixed(2)}" x2="${X_LEFT + LINE_W}" y2="${y.toFixed(2)}" stroke="#2b2b3a" stroke-width="1.6"/>`;
+    body += `<line x1="${X_LEFT}" y1="${dashY.toFixed(2)}" x2="${X_LEFT + LINE_W}" y2="${dashY.toFixed(2)}" stroke="#bbbbbb" stroke-width="1.5" stroke-dasharray="7,7"/>`;
+    body += `<line x1="${X_LEFT}" y1="${bottom.toFixed(2)}" x2="${X_LEFT + LINE_W}" y2="${bottom.toFixed(2)}" stroke="#2b2b3a" stroke-width="1.6"/>`;
+    const t = lineTexts[i];
+    if (t) {
+      // Inset the glyph band inside the rules so a letter's top/bottom bar
+      // never coincides with the cap-line or baseline ruling.
+      const inset = 0.5 * STROKE_W / UPM * S;
+      const Si = S * (boxH - 2 * inset) / boxH;
+      const baseline = bottom - inset;
+      if (state.style === 'dash') {
+        const { frag, width } = dashFragment(t, Si);
+        const startX = X_LEFT + (LINE_W - width) / 2;
+        body += `<g transform="translate(${startX.toFixed(1)},${baseline.toFixed(1)})">${frag}</g>`;
+      } else {
+        if (!dotCacheLocal[t]) dotCacheLocal[t] = layoutText(t);
+        const { pts, width } = dotCacheLocal[t];
+        const startX = X_LEFT + (LINE_W - width / UPM * Si) / 2;
+        let c = '';
+        for (const [gx, gy] of pts) {
+          const px = startX + gx / UPM * Si;
+          const py = baseline - gy / UPM * Si;
+          c += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(DOT_R_EM * Si).toFixed(2)}" fill="#1c1c1c"/>`;
+        }
+        body += c;
+      }
+    }
+    y += boxH + gap;
+  }
+  return `<svg viewBox="0 0 ${PAGE_W} ${PAGE_H}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="white"/>${body}</svg>`;
+}
+
+// ============ App state & wiring ============
+const state = { theme: 0, lines: 8, alphabet: false, style: 'dash' };
+
+const firstEl = document.getElementById('first');
+const middleEl = document.getElementById('middle');
+const lastEl = document.getElementById('last');
+const sheetsEl = document.getElementById('sheets');
+const brandEl = document.getElementById('brandName');
+const warnEl = document.getElementById('charWarn');
+
+function clean(raw) {
+  const ok = raw.replace(/[^A-Za-z \-]/g, '');
+  return { value: ok.replace(/\s+/g, ' '), removed: ok !== raw };
+}
+
+function buildPages() {
+  const f = clean(firstEl.value.trim());
+  const m = clean(middleEl.value.trim());
+  const l = clean(lastEl.value.trim());
+  warnEl.style.display = (f.removed || m.removed || l.removed) ? 'block' : 'none';
+  warnEl.textContent = 'Letters, spaces, and hyphens only — other characters were skipped.';
+
+  const first = f.value, middle = m.value, last = l.value;
+  const theme = THEMES[state.theme];
+
+  // brand header mirrors the worksheet header
+  brandEl.innerHTML = '';
+  const showName = (first || 'WILLA').toUpperCase();
+  [...showName].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch;
+    s.style.color = ch === ' ' ? 'transparent' : theme.c[i % 4];
+    brandEl.appendChild(s);
+  });
+
+  if (!first) {
+    sheetsEl.innerHTML = '<div class="empty-state">Type a <b>first name</b> to build the worksheet packet.</div>';
+    return;
+  }
+
+  const rep = t => Array(state.lines).fill(t);
+  const pages = [{ subtitle: 'Name Practice', lines: rep(first) }];
+  if (middle) pages.push({ subtitle: middle, lines: rep(`${first} ${middle}`) });
+  if (last) pages.push({ subtitle: middle ? `${middle} ${last}` : last, lines: rep([first, middle, last].filter(Boolean).join(' ')) });
+  pages.push({ subtitle: 'I can write my name!', lines: rep(null) });
+  if (state.alphabet) {
+    pages.push({ subtitle: 'Alphabet \u2014 Uppercase',
+      lines: ['ABCD', 'EFGH', 'IJKL', 'MNOP', 'QRST', 'UVWX', 'YZ', null] });
+    pages.push({ subtitle: 'Alphabet \u2014 Lowercase',
+      lines: ['abcd', 'efgh', 'ijkl', 'mnop', 'qrst', 'uvwx', 'yz', null] });
+  }
+
+  // unified size across every traced line of every page
+  let maxW = 0;
+  for (const p of pages) {
+    for (const t of p.lines) {
+      if (t) maxW = Math.max(maxW, layoutText(t).width);
+    }
+  }
+  const S = Math.min(85, (LINE_W - 24) / (maxW / UPM));
+
+  sheetsEl.innerHTML = pages.map(p =>
+    `<div class="sheet">${pageSvg({
+      name: first, subtitle: p.subtitle, lineTexts: p.lines, S, theme
+    })}</div>`
+  ).join('');
+}
+
+// theme swatches
+const swRow = document.getElementById('swatches');
+THEMES.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.className = 'swatch' + (i === state.theme ? ' sel' : '');
+  b.setAttribute('role', 'radio');
+  b.setAttribute('aria-label', t.name + ' theme');
+  b.style.setProperty('--c1', t.c[0]);
+  b.style.setProperty('--c2', t.c[1]);
+  b.style.setProperty('--c3', t.c[2]);
+  b.style.setProperty('--c4', t.c[3]);
+  b.onclick = () => {
+    state.theme = i;
+    swRow.querySelectorAll('.swatch').forEach((el, j) => el.classList.toggle('sel', j === i));
+    buildPages();
+  };
+  swRow.appendChild(b);
+});
+
+// lines per page
+const segEl = document.getElementById('lineSeg');
+[6, 7, 8].forEach(n => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.className = n === state.lines ? 'sel' : '';
+  b.onclick = () => {
+    state.lines = n;
+    segEl.querySelectorAll('button').forEach(el => el.classList.toggle('sel', +el.textContent === n));
+    buildPages();
+  };
+  segEl.appendChild(b);
+});
+
+let deb;
+[firstEl, middleEl, lastEl].forEach(el =>
+  el.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(buildPages, 160); })
+);
+document.querySelectorAll('#styleSeg button').forEach(b => {
+  b.onclick = () => {
+    state.style = b.dataset.style;
+    document.querySelectorAll('#styleSeg button').forEach(el => el.classList.toggle('sel', el === b));
+    buildPages();
+  };
+});
+document.getElementById('alphaToggle').onchange = (e) => { state.alphabet = e.target.checked; buildPages(); };
+document.getElementById('printBtn').onclick = () => window.print();
+
+buildPages();
+</script>
+</body>
+</html>
