@@ -196,7 +196,7 @@
     <div class="panel">
       <div class="field">
         <label for="first">First name</label>
-        <input id="first" type="text" value="Willa" maxlength="14" autocomplete="off">
+        <input id="first" type="text" value="" maxlength="14" autocomplete="off" placeholder="Type a name…">
       </div>
       <div class="field">
         <label for="middle">Middle name <span style="text-transform:none;font-weight:400">(optional)</span></label>
@@ -414,11 +414,12 @@ function buildPages() {
 
   // brand header mirrors the worksheet header
   brandEl.innerHTML = '';
-  const showName = (first || 'WILLA').toUpperCase();
+  const showName = (first || 'NAME').toUpperCase();
   [...showName].forEach((ch, i) => {
     const s = document.createElement('span');
     s.textContent = ch;
     s.style.color = ch === ' ' ? 'transparent' : theme.c[i % 4];
+    if (!first) s.style.opacity = '0.35';
     brandEl.appendChild(s);
   });
 
