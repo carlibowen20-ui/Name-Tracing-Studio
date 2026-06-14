@@ -252,6 +252,27 @@
       <button class="print-btn" id="printBtn">Print worksheets</button>
       <div class="print-note">In the print dialog, choose &ldquo;Save as PDF&rdquo; to keep a copy.</div>
       <div class="hint" id="charWarn" style="color:#d4708a; display:none; margin-top:10px;"></div>
+
+      <div style="margin-top:18px; border-top:1px solid var(--line); padding-top:16px;">
+        <div style="font-size:12.5px; font-weight:600; letter-spacing:.4px; text-transform:uppercase; color:#8a8494; margin-bottom:6px;">Bulk / Class List</div>
+        <div style="font-size:12px; color:#a09aa8; margin-bottom:10px;">All settings above apply to every student. Address columns in the CSV override the shared address fields per student.</div>
+
+        <textarea id="bulkInput" rows="5" placeholder="Alice&#10;Bob Smith&#10;Carol Jean Jones&#10;— or upload a CSV —" style="width:100%; padding:10px 12px; font:13px 'Poppins',sans-serif; color:var(--ink); border:1.5px solid var(--line); border-radius:11px; resize:vertical; outline:none; background:#fffdfc; box-sizing:border-box;"></textarea>
+
+        <div style="display:flex; gap:7px; margin-top:8px;">
+          <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:8px 0; font:600 12px 'Poppins',sans-serif; color:var(--ink); background:#fffdfc; border:1.5px solid var(--line); border-radius:9px; cursor:pointer;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload CSV
+            <input type="file" id="bulkFile" accept=".csv,.txt" style="display:none">
+          </label>
+          <button id="sampleCsvBtn" style="flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:8px 0; font:600 12px 'Poppins',sans-serif; color:var(--ink); background:#fffdfc; border:1.5px solid var(--line); border-radius:9px; cursor:pointer;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Sample CSV
+          </button>
+          <button id="bulkClear" style="padding:8px 12px; font:600 12px 'Poppins',sans-serif; color:#a09aa8; background:#fffdfc; border:1.5px solid var(--line); border-radius:9px; cursor:pointer;">Clear</button>
+        </div>
+        <div id="bulkCount" style="font-size:12px; color:#a09aa8; margin-top:6px; display:none;"></div>
+      </div>
     </div>
 
     <div class="sheets" id="sheets"></div>
@@ -500,6 +521,44 @@ function pageSvg({ name, subtitle, lineTexts, S, theme, isAddress, isAlphabet })
 const state = { theme: 0, lines: 8, alphabet: false, style: 'dash',
                 address: false, addr: { street:'', city:'', stateAb:'', zip:'', phone:'' } };
 
+// Bulk class list
+let bulkList = []; // [{first, middle, last}]
+
+function parseBulk(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  // Skip header row if it starts with "first" (case-insensitive)
+  const dataLines = lines[0] && lines[0].toLowerCase().startsWith('first') ? lines.slice(1) : lines;
+  return dataLines.map(line => {
+    const parts = line.split(',').map(p => p.trim());
+    // CSV columns: First, Middle, Last, Street, City, State, ZIP, Phone
+    if (parts.length >= 2) {
+      const first  = parts[0] || '';
+      const middle = parts.length >= 3 ? (parts[1] || '') : '';
+      const last   = parts.length >= 3 ? (parts[2] || '') : (parts[1] || '');
+      const street = parts[3] || '';
+      const city   = parts[4] || '';
+      const stateAb= parts[5] || '';
+      const zip    = parts[6] || '';
+      const phone  = parts[7] || '';
+      const hasAddr = street || city || stateAb || zip || phone;
+      return { first, middle, last,
+               addr: hasAddr ? { street: cleanAddr(street), city: cleanAddr(city),
+                                 stateAb: cleanAddr(stateAb).toUpperCase(),
+                                 zip: cleanAddr(zip), phone: cleanAddr(phone) } : null };
+    }
+    // Plain words fallback: no address data
+    const words = line.split(/\s+/);
+    if (words.length === 1) return { first: words[0], middle: '', last: '', addr: null };
+    if (words.length === 2) return { first: words[0], middle: '', last: words[1], addr: null };
+    return { first: words[0], middle: words.slice(1, -1).join(' '), last: words[words.length - 1], addr: null };
+  }).map(p => ({
+    first:  clean(p.first).value,
+    middle: clean(p.middle).value,
+    last:   clean(p.last).value,
+    addr:   p.addr,
+  })).filter(p => p.first || p.last);
+}
+
 const firstEl = document.getElementById('first');
 const middleEl = document.getElementById('middle');
 const lastEl = document.getElementById('last');
@@ -522,6 +581,59 @@ function cleanAddr(raw) {
   return raw.replace(/[^A-Za-z0-9 .,'#/&-]/g, '').replace(/\s+/g, ' ');
 }
 
+function buildPagesForPerson(first, middle, last, addrOverride) {
+  const theme = THEMES[state.theme];
+  const rep = t => Array(state.lines).fill(t);
+  const pages = [{ subtitle: 'Name Practice', lines: rep(first) }];
+  if (middle) pages.push({ subtitle: middle, lines: rep(`${first} ${middle}`) });
+  if (last) pages.push({ subtitle: middle ? `${middle} ${last}` : last, lines: rep([first, middle, last].filter(Boolean).join(' ')) });
+  pages.push({ subtitle: 'I can write my name!', lines: rep(null) });
+  if (state.alphabet) {
+    pages.push({ subtitle: 'Alphabet — Uppercase', noName: true, isAlphabet: true,
+      lines: ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ',
+              'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ'] });
+    pages.push({ subtitle: 'Alphabet — Lowercase', noName: true, isAlphabet: true,
+      lines: ['abcdefghijklm', 'nopqrstuvwxyz', 'abcdefghijklm', 'nopqrstuvwxyz',
+              'abcdefghijklm', 'nopqrstuvwxyz', 'abcdefghijklm', 'nopqrstuvwxyz'] });
+    pages.push({ subtitle: 'Alphabet Practice — Uppercase', noName: true, lines: rep(null) });
+    pages.push({ subtitle: 'Alphabet Practice — Lowercase', noName: true, lines: rep(null) });
+  }
+  // Use per-student address from CSV if provided, else fall back to shared address fields
+  const a = addrOverride || state.addr;
+  const useAddr = state.address && (addrOverride || (state.addr.street || state.addr.city));
+  if (useAddr) {
+    const cityLine = [a.city, a.stateAb].filter(Boolean).join(', ') + (a.zip ? ' ' + a.zip : '');
+    const addrLines = [];
+    if (a.street) addrLines.push(a.street);
+    if (cityLine.trim()) addrLines.push(cityLine.trim());
+    const lns = [];
+    for (const al of addrLines) { lns.push(al); }
+    if (a.phone) { lns.push(a.phone); }
+    while (lns.length && lns.length < state.lines) lns.push(null);
+    if (lns.length) pages.push({ subtitle: 'My Address', noName: true, isAddress: true, lines: lns.slice(0, Math.max(state.lines, lns.length)) });
+  }
+
+  const lineWidth = (t, isAddr, isAlpha) => {
+    if (isAddr) return addressWidth(t);
+    if (state.style === 'cursive') return cursiveLayout(t, !!isAlpha).width;
+    return layoutText(t).width;
+  };
+
+  let maxW = 0;
+  for (const p of pages) {
+    for (const t of p.lines) {
+      if (t) maxW = Math.max(maxW, lineWidth(t, p.isAddress, p.isAlphabet));
+    }
+  }
+  const S = Math.min(85, (LINE_W - 24) / (maxW / UPM));
+
+  return pages.map(p =>
+    `<div class="sheet">${pageSvg({
+      name: p.noName ? '' : first, subtitle: p.subtitle, lineTexts: p.lines, S, theme, isAddress: p.isAddress, isAlphabet: p.isAlphabet
+    })}</div>`
+  ).join('');
+}
+
 function buildPages() {
   const f = clean(firstEl.value.trim());
   const m = clean(middleEl.value.trim());
@@ -537,8 +649,19 @@ function buildPages() {
     phone: cleanAddr(phoneEl.value.trim()),
   };
 
-  const first = f.value, middle = m.value, last = l.value;
   const theme = THEMES[state.theme];
+
+  // Bulk mode: generate packets for each person in the class list
+  if (bulkList.length > 0) {
+    brandEl.innerHTML = '';
+    const label = `${bulkList.length} student${bulkList.length > 1 ? 's' : ''}`;
+    brandEl.textContent = label;
+    brandEl.style.color = theme.c[0];
+    sheetsEl.innerHTML = bulkList.map(p => buildPagesForPerson(p.first, p.middle, p.last, p.addr)).join('');
+    return;
+  }
+
+  const first = f.value, middle = m.value, last = l.value;
 
   // brand header mirrors the worksheet header
   brandEl.innerHTML = '';
@@ -552,59 +675,11 @@ function buildPages() {
   });
 
   if (!first) {
-    sheetsEl.innerHTML = '<div class="empty-state">Type a <b>first name</b> to build the worksheet packet.</div>';
+    sheetsEl.innerHTML = '<div class="empty-state">Type a <b>first name</b> above, or paste a class list below.</div>';
     return;
   }
 
-  const rep = t => Array(state.lines).fill(t);
-  const pages = [{ subtitle: 'Name Practice', lines: rep(first) }];
-  if (middle) pages.push({ subtitle: middle, lines: rep(`${first} ${middle}`) });
-  if (last) pages.push({ subtitle: middle ? `${middle} ${last}` : last, lines: rep([first, middle, last].filter(Boolean).join(' ')) });
-  pages.push({ subtitle: 'I can write my name!', lines: rep(null) });
-  if (state.alphabet) {
-    pages.push({ subtitle: 'Alphabet \u2014 Uppercase', noName: true, isAlphabet: true,
-      lines: ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ',
-              'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', 'ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ'] });
-    pages.push({ subtitle: 'Alphabet \u2014 Lowercase', noName: true, isAlphabet: true,
-      lines: ['abcdefghijklm', 'nopqrstuvwxyz', 'abcdefghijklm', 'nopqrstuvwxyz',
-              'abcdefghijklm', 'nopqrstuvwxyz', 'abcdefghijklm', 'nopqrstuvwxyz'] });
-    pages.push({ subtitle: 'Alphabet Practice \u2014 Uppercase', noName: true, lines: rep(null) });
-    pages.push({ subtitle: 'Alphabet Practice \u2014 Lowercase', noName: true, lines: rep(null) });
-  }
-  if (state.address) {
-    const a = state.addr;
-    const cityLine = [a.city, a.stateAb].filter(Boolean).join(', ') + (a.zip ? ' ' + a.zip : '');
-    const addrLines = [];
-    if (a.street) addrLines.push(a.street);
-    if (cityLine.trim()) addrLines.push(cityLine.trim());
-    const lns = [];
-    for (const al of addrLines) { lns.push(al); }                     // each address line once
-    if (a.phone) { lns.push(a.phone); }
-    while (lns.length && lns.length < state.lines) lns.push(null);
-    if (lns.length) pages.push({ subtitle: 'My Address', noName: true, isAddress: true, lines: lns.slice(0, Math.max(state.lines, lns.length)) });
-  }
-
-  // width of a line depends on the active style
-  const lineWidth = (t, isAddr, isAlpha) => {
-    if (isAddr) return addressWidth(t);
-    if (state.style === 'cursive') return cursiveLayout(t, !!isAlpha).width;  // worksheet units
-    return layoutText(t).width;                                       // dash & dot share metrics
-  };
-
-  // unified size across every traced line of every page
-  let maxW = 0;
-  for (const p of pages) {
-    for (const t of p.lines) {
-      if (t) maxW = Math.max(maxW, lineWidth(t, p.isAddress, p.isAlphabet));
-    }
-  }
-  const S = Math.min(85, (LINE_W - 24) / (maxW / UPM));
-
-  sheetsEl.innerHTML = pages.map(p =>
-    `<div class="sheet">${pageSvg({
-      name: p.noName ? '' : first, subtitle: p.subtitle, lineTexts: p.lines, S, theme, isAddress: p.isAddress, isAlphabet: p.isAlphabet
-    })}</div>`
-  ).join('');
+  sheetsEl.innerHTML = buildPagesForPerson(first, middle, last);
 }
 
 // theme swatches
@@ -658,6 +733,56 @@ document.getElementById('addrToggle').onchange = (e) => {
   buildPages();
 };
 document.getElementById('printBtn').onclick = () => window.print();
+
+// Bulk CSV wiring
+const bulkInputEl = document.getElementById('bulkInput');
+const bulkCountEl = document.getElementById('bulkCount');
+const bulkFileEl  = document.getElementById('bulkFile');
+
+function updateBulk() {
+  const text = bulkInputEl.value.trim();
+  bulkList = text ? parseBulk(text) : [];
+  if (bulkList.length > 0) {
+    bulkCountEl.style.display = 'block';
+    bulkCountEl.textContent = `${bulkList.length} student${bulkList.length > 1 ? 's' : ''} detected — single-name fields ignored while list is active.`;
+  } else {
+    bulkCountEl.style.display = 'none';
+  }
+  buildPages();
+}
+
+bulkInputEl.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(updateBulk, 300); });
+
+document.getElementById('bulkClear').onclick = () => {
+  bulkInputEl.value = '';
+  updateBulk();
+};
+
+// Sample CSV download
+document.getElementById('sampleCsvBtn').onclick = () => {
+  const rows = [
+    'First,Middle,Last,Street,City,State,ZIP,Phone',
+    'Alice,,Smith,123 Oak Lane,Springfield,IL,62701,555-0101',
+    'Bob,James,Jones,456 Maple Ave,Shelbyville,IL,62565,',
+    'Carol Jean,,Williams,,,,,',
+    'David,,,,,,,',
+  ];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'class-list-sample.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+bulkFileEl.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => { bulkInputEl.value = ev.target.result; updateBulk(); };
+  reader.readAsText(file);
+  bulkFileEl.value = ''; // allow re-upload of same file
+};
 
 buildPages();
 </script>
